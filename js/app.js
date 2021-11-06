@@ -17,7 +17,6 @@ const phrases = [
 
 let missed = 0;
 
-
 // *************************************************
 // *                Global Functions               *
 // *************************************************
@@ -41,7 +40,7 @@ function addPhraseToDisplay( phrase_array )
 
         if ( phrase_array[ i ] !== ' ' )
         {
-            li.className = 'letter';
+            li.className = 'letter hvr-bounce-to-bottom';
         }
         else
         {
@@ -53,7 +52,7 @@ function addPhraseToDisplay( phrase_array )
     }
 }
 
-//Takes a letter (A-Z) case insensitive and checks to see if the phrase contains it
+//Takes a letter (A-Z case insensitive) and checks to see if the phrase contains it.
 //If so, the class 'show' is added to the lis that match the letter so they can be shown
 function checkLetter( letter )
 {
@@ -64,15 +63,37 @@ function checkLetter( letter )
     {
         if ( letter.toUpperCase() === all_letters_in_phrase[ i ].textContent.toUpperCase() )
         {
-            all_letters_in_phrase[ i ].classList.add( 'show' );
+            all_letters_in_phrase[ i ].classList.add( 'show', 'hvr-bounce-to-bottom-animate' );
             letter_found = true;
         }
     }
 
     if ( letter_found )
+    {
         return letter;
+    }
     else
+    {
         return null;
+    }
+}
+
+function setEndingStatus( player_won )
+{
+    resetGame();
+    div_overlay.removeAttribute( 'style' );
+    if ( player_won )
+    {
+        div_overlay.className = 'win';
+        div_overlay.querySelector( 'h2' ).textContent = 'You win!!!';
+        start_button.textContent = 'Play Again';
+    }
+    else
+    {
+        div_overlay.className = 'lose';
+        div_overlay.querySelector( 'h2' ).textContent = 'You Lose!';
+        start_button.textContent = 'Try Again';
+    }
 }
 
 //Check to see if the number of shown letters equals the number of letters in the phrase
@@ -82,49 +103,84 @@ function checkWin()
     const letters = document.querySelectorAll( '.letter' );
     const shown_letters = document.querySelectorAll( '.show' );
 
-    if(missed >= 5)
+    if ( missed >= 5 )
     {
-        div_overlay.removeAttribute( 'style' );
-        div_overlay.className = 'lose';
-        div_overlay.querySelector( 'h2' ).textContent = 'You LOSE!!!';
-        start_button.textContent = 'Try Again';
+        setTimeout( () => { setEndingStatus( false ) }, 400 );
     }
     else if ( letters.length === shown_letters.length )
     {
-        div_overlay.removeAttribute( 'style' );
-        div_overlay.className = 'win';
-        div_overlay.querySelector( 'h2' ).textContent = 'You win!!!';
-        start_button.textContent = 'Play Again';
+        setTimeout( () => { setEndingStatus( true ) }, 800 );
     }
 }
 
-document.addEventListener( 'keypress', ( e ) =>
+//Find the li element corresponding to the keypress or click and return
+function findLi( letter )
 {
-    //Ignore the event if the user is looking at the Start, Win, or Lose overlays
-    if ( document.querySelector( '#overlay' ).style.display !== 'none' )
-        return;
-
-    //Find the li element corresponding to the keypress and add the 'chosen' class
     let letters = document.querySelectorAll( '.keyrow button' );
     for ( let i = 0; i < letters.length; ++i )
     {
-        if ( letters[ i ].textContent.toLowerCase() === e.key.toLowerCase() )
+        if ( letters[ i ].textContent.toLowerCase() === letter.toLowerCase() )
         {
-            if ( letters[ i ].disabled === false )
-            {
-                letters[ i ].classList.add( 'chosen' );
-                letters[ i ].disabled = true;
-
-                if ( !checkLetter( e.key ) )
-                {
-                    document.querySelectorAll( '.tries img' )[ missed++ ].src =
-                        '/images/lostHeart.png'
-                }
-            }
+            return letters[ i ];
         }
     }
 
+    return null;
+}
+
+//Takes a LI of a letter resulting from a click or keypress and updates the UI accordingly
+//And then check for a winning state
+function processLetterLogic( letterLI )
+{
+    if ( letterLI.disabled === false )
+    {
+        //reset class names and re-add them depending on if the guess was correct or not
+        letterLI.className = '';
+        letterLI.classList.add( 'chosen' );
+        letterLI.disabled = true;
+
+        if ( !checkLetter( letterLI.textContent ) )
+        {
+            letterLI.classList.add( 'hvr-buzz-out', 'hvr-buzz-animate', 'incorrect' );
+            document.querySelectorAll( '.tries img' )[ missed++ ].src =
+                '/images/lostHeart.png'
+        }
+        else
+        {
+            letterLI.classList.add( 'hvr-pop', 'hvr-pop-animate', 'correct' );
+        }
+    }
     checkWin();
+}
+
+function between( x, min, max )
+{
+    return x >= min && x <= max;
+}
+document.addEventListener( 'keypress', ( e ) =>
+{
+    //a === 97
+    //z === 122
+    //A === 65
+    //Z === 90
+    //Ignore the event if the user is looking at the Start, Win, or Lose overlays
+    //Or if the user pressed a non letter key
+    //keyCode is deprecated but it is still supported by all browsers and was the easiest solution, imo
+    if ( document.querySelector( '#overlay' ).style.display !== 'none' ||
+        ( !between( e.keyCode, 65, 90 ) && !between( e.keyCode, 97, 122 ) ) )
+        return;
+
+    //Find the li element corresponding to the keypress and add the 'chosen' class
+    processLetterLogic( findLi( e.key ) );
+} );
+
+div_qwerty.addEventListener( 'click', ( e ) =>
+{
+    //If we've clicked a button, remove the hvr-grow class pass the letter clicked to the checkLetter func
+    if ( e.target.nodeName === 'BUTTON' )
+    {
+        processLetterLogic( findLi( e.target.textContent ) );
+    }
 } );
 
 function resetGame()
@@ -141,7 +197,7 @@ function resetGame()
     let letters = document.querySelectorAll( '.keyrow button' );
     for ( let i = 0; i < letters.length; ++i )
     {
-        letters[ i ].className = '';
+        letters[ i ].className = 'hvr-grow';
         letters[ i ].disabled = false;
     }
 
@@ -151,10 +207,13 @@ function resetGame()
         heart_imgs[ i ].src = '/images/liveHeart.png';
 
 }
-//Disable the overlay when the user clicks Start Game
+
+
+//Reset game and disable the overlay when the user clicks start button
 start_button.addEventListener( 'click', () =>
 {
-    resetGame();
     addPhraseToDisplay( getRandomPhraseAsArray( phrases ) );
     div_overlay.style.display = 'none';
 } );
+
+resetGame();
